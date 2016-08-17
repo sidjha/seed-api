@@ -6,6 +6,7 @@ class Circle:
     # city: city where circle is in
     # seeds: list of seeds
     # metadata: other optional metadata
+    # create table circle(circle_id integer, center_lat real, center_lng real, radius integer, city varchar(30), seeds integer, metadata varchar(1000));
     pass
 
 class Seed:
@@ -15,6 +16,7 @@ class Seed:
     # seeder: username of seeder
     # isActive: True if seed has not expired. False, otherwise.
     # metadata: other optional metadata
+    # create table seed(seed_id integer, link varchar(65535), user_id integer, isActive integer, metadata varchar(1000));
     pass
 
 class User:
@@ -24,6 +26,7 @@ class User:
     # notifications: boolean indicating whether notifications are ON or OFF
     # seeds: list of Seeds (seed_ids) this user has seeded
     # metadata: other optional metadata
+    # create table user(user_id integer, first_name varchar(20), last_initial varchar(3), username varchar(20), metadata varchar(1000));
     pass
 
 class Seedbag:
