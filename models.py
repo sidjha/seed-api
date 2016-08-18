@@ -1,5 +1,6 @@
 from app import db
 from sqlalchemy.dialects.postgresql import JSON
+from geoalchemy2 import Geometry
 
 class Circle(db.Model):
     # center: coordinate of center point (lat/long)
@@ -11,14 +12,16 @@ class Circle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     center_lat = db.Column(db.Float)
     center_lng = db.Column(db.Float)
+    point = db.Column(Geometry('POINT'))
     radius = db.Column(db.Integer)
     name = db.Column(db.String())
     city = db.Column(db.String())
     seeds = db.relationship('Seed', backref='circle', lazy='dynamic')
 
-    def __init__(self, center_lat, center_lng, radius, name, city):
+    def __init__(self, center_lat, center_lng, point, radius, name, city):
         self.center_lat = center_lat
         self.center_lng = center_lng
+        self.point = point
         self.radius = radius
         self.name = name
         self.city = city
