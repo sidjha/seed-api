@@ -1,22 +1,14 @@
 from flask import Flask, render_template, request, json, g
 import os
-import sqlite3
+from flask.ext.sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
+app.config.from_object(os.environ['APP_SETTINGS'])
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-DATABASE = '/Users/sidjha/Dropbox/sandbox/seed/seed-api/seed_db.db'
+from models import Circle, Seed, User
 
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-    return db
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
 
 @app.route("/")
 def index():

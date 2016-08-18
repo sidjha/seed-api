@@ -1,34 +1,81 @@
-# models.py
+from app import db
+from sqlalchemy.dialects.postgresql import JSON
 
-class Circle:
+class Circle(db.Model):
     # center: coordinate of center point (lat/long)
     # radius: length of radius (meters)
     # city: city where circle is in
     # seeds: list of seeds
-    # metadata: other optional metadata
-    # create table circle(circle_id integer, center_lat real, center_lng real, radius integer, city varchar(30), seeds integer, metadata varchar(1000));
-    pass
+    
+    __tablename__ = 'circles'
+    id = db.Column(db.Integer, primary_key=True)
+    center_lat = db.Column(db.Float)
+    center_lng = db.Column(db.Float)
+    radius = db.Column(db.Integer)
+    name = db.Column(db.String())
+    city = db.Column(db.String())
+    seeds = db.relationship('Seed', backref='circle', lazy='dynamic')
 
-class Seed:
+    def __init__(self, center_lat, center_lng, radius, name, city):
+        self.center_lat = center_lat
+        self.center_lng = center_lng
+        self.radius = radius
+        self.name = name
+        self.city = city
+
+    def __repr__(self):
+        return '<Circle %r>' % self.id
+
+
+class Seed(db.Model):
     # title: Descriptive title of seed
     # link: URL of seed content
-    # circle: circle in which seed belongs
+    # circle_id: circle in which seed belongs
     # seeder: username of seeder
     # isActive: True if seed has not expired. False, otherwise.
-    # metadata: other optional metadata
-    # create table seed(seed_id integer, link varchar(65535), user_id integer, isActive integer, metadata varchar(1000));
-    pass
 
-class User:
+    __tablename__ = 'seeds'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String())
+    link = db.Column
+    circle_id = db.Column(db.Integer, db.ForeignKey('circle.id'))
+    seeder_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    isActive = db.Column(db.Boolean)
+
+    def __init__(self, title, circle_id, seeder_id, isActive):
+        self.title = title
+        self.circle_id = circle_id
+        self.seeder_id = seeder_id
+        self.isActive = isActive
+
+    def __repr__(self):
+        return '<Seed %r>' % self.id
+
+
+class User(db.Model):
     # first_name
     # last_initial
     # username
     # notifications: boolean indicating whether notifications are ON or OFF
     # seeds: list of Seeds (seed_ids) this user has seeded
-    # metadata: other optional metadata
-    # create table user(user_id integer, first_name varchar(20), last_initial varchar(3), username varchar(20), metadata varchar(1000));
-    pass
+    
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(40))
+    last_initial = db.Column(db.String(40))
+    username = db.Column(db.String(40), unique=True)
+    notifications = db.Column(db.Boolean)
+    seeds = db.relationship('Seed', backref='user', lazy='dynamic')
 
-class Seedbag:
+    def __init__(self, first_name, last_initial, username, notifications):
+        self.first_name = first_name
+        self.last_initial = last_initial
+        self.username = username
+        self.notifications = notifications
+
+    def __repr__(self):
+        return '<User %r>' % self.id
+
+class Seedbag(db.Model):
     pass
 
