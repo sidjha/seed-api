@@ -21,13 +21,22 @@ def api_circle():
     Otherwise, returns a list of nearby circles based on specified latitude and longitude.
     """
 
-    if not request.json or not "lat" in request.json or not "lng" in request.json:
-        abort(400, "Missing parameter")
+    # Parse arguments, extract latitude and longitude
+    lat = request.args.get("lat", '')
+    lng = request.args.get('lng', '')
 
-    lat = request.json["lat"]
-    lng = request.json["lng"]
+    # TODO: Query database for circles with nearby centres
+    
+    # Check list to see whether point is inside existing circle
 
-    #TODO: query database for matching circle
+    # for each point in list
+    # 1. convert point to radians
+    # 2. calculate geodesic
+    # a = (math.sin(lat)*math.sin(p_lat)+math.cos(lat)*math.cos(p_lat)*math.cos(lng - p_lng))
+    # dist = (math.acos(a))*6371
+    # 3. if distance <= radius, point is inside. convert to JSON and return.
+
+    # convert 5 items from list to JSON-formatted list
 
 
 def is_in_circle(latitude, longitude):
