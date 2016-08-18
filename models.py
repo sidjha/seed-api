@@ -38,8 +38,8 @@ class Seed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String())
     link = db.Column
-    circle_id = db.Column(db.Integer, db.ForeignKey('circle.id'))
-    seeder_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    circle_id = db.Column(db.Integer, db.ForeignKey('circles.id'))
+    seeder_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     isActive = db.Column(db.Boolean)
 
     def __init__(self, title, circle_id, seeder_id, isActive):

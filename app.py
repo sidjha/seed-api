@@ -3,7 +3,8 @@ import os
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config.from_object(os.environ['APP_SETTINGS'])
+APP_SETTINGS="config.DevConfig"
+app.config.from_object(APP_SETTINGS)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
