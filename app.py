@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, json, g
 import os
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
@@ -9,10 +9,8 @@ db = SQLAlchemy(app)
 
 from models import Circle, Seed, User
 
-
 @app.route("/")
 def index():
-    cur = get_db().cursor()
     return "seed v1.0"
 
 @app.route("/circles", methods=["GET"])

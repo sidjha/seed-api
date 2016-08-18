@@ -76,6 +76,6 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.id
 
-class Seedbag(db.Model):
+class Seedbag():
     pass
 
