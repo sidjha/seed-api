@@ -1,9 +1,11 @@
 from app import db
 from sqlalchemy.dialects.postgresql import JSON
-from geoalchemy2 import Geometry, Geography
+from geoalchemy2 import Geography
 
 class Circle(db.Model):
-    # center: coordinate of center point (lat/long)
+    # center_lat: latitude of center point
+    # center_lng: longitude of center point
+    # point: PostGIS Geography rep of center point (long lat)
     # radius: length of radius (meters)
     # city: city where circle is in
     # seeds: list of seeds
