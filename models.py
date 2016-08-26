@@ -59,8 +59,9 @@ class Seed(db.Model):
     seeder_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     isActive = db.Column(db.Boolean)
 
-    def __init__(self, title, circle_id, seeder_id, isActive):
+    def __init__(self, title, link, circle_id, seeder_id, isActive):
         self.title = title
+        self.link = link
         self.circle_id = circle_id
         self.seeder_id = seeder_id
         self.isActive = isActive

@@ -69,15 +69,54 @@ def api_circle():
     else:
         abort(400, "Missing arguments")
 
+@app.route("/seeds", methods=["GET"])
+def api_seeds():
+    """
+    Returns a list of seeds in the circle with the specified circle_id.
+    """
+    circle_id = request.args.get('circle_id')
+    if circle_id:
+        circle = Circle.query.filter_by(id=circle_id).first()
+
+        if circle:
+            return jsonify({"seeds": [i.serialize for i in circle.seeds]}), 200
+        else:
+            abort(404, "Circle does not exist.")
+    else:
+        abort(400, "Invalid or missing arguments")
+
 
 # pragma mark - helper functions
-
 def populate_GIS():
     circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
     circle2 = Circle(center_lat=37.414172, center_lng=-122.038672, point='POINT(-122.038672 37.414172)', radius='200', name='airbase', city='Cupertino')
     circle4 = Circle(center_lat=37.777025, center_lng=-122.416583, point='POINT(-122.416583 37.777025)', radius='200', name='twitter hq', city='San Francisco')
     circle3 = Circle(center_lat=40.748636, center_lng=-73.985654, point='POINT(-73.985654 40.748636)', radius='100', name='empire state', city='Empire State Bldg')
 
+def populate_seeds():
+    seed1 = Seed(title="Dropbox looking to IPO in 2017.",
+                 link="http://www.bloomberg.com/news/articles/2016-08-15/dropbox-said-to-discuss-possible-2017-ipo-in-talks-with-advisers",
+                 circle_id=4,
+                 seeder_id=1,
+                 isActive=True)
+
+    seed2 = Seed(title="Uber just losing lots of money.",
+                 link="http://www.nytimes.com/2016/08/26/technology/how-uber-lost-more-than-1-billion-in-the-first-half-of-2016.html?ref=technology",
+                 circle_id=4,
+                 seeder_id=1,
+                 isActive=True)
+
+    db.session.add(seed1)
+    db.session.commit()
+
+def populate_users():
+    user1 = User(first_name="Siddharth",
+                 last_initial="J",
+                 username="sidjha",
+                 notifications=True)
+
+    db.session.add(user1)
+    db.session.commit()
 
 def alternative_circle_search():
     # This one does it with max 2 queries instead of comparing geodesics of nearby set
