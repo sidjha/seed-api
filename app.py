@@ -315,6 +315,36 @@ def api_create_account():
     else:
         abort(400, "This type of request is not supported.")
 
+@app.route("/users/delete", methods=["POST"])
+def api_delete_user():
+    """
+    Delete the specified user and all their seeds.
+    """
+    if request.method == "POST":
+        user_id = request.form.get("user_id", None)
+
+        try:
+            user_id = int(user_id)
+        except:
+            abort(400, "Invalid arguments.")
+
+        if user_id:
+            user = User.query.filter_by(id=user_id).first()
+            if user:
+                try:
+                    Seed.query.filter_by(seeder_id=user.id).delete()
+                    db.session.delete(user)
+                    db.session.commit()
+                    return jsonify({"user": ""}), 200
+                except:
+                    abort(500, "Something went wrong. Could not delete user.")
+            else:
+                abort(400, "No such user found.")
+        else:
+            abort(400, "Missing arguments.")
+    else:
+        abort(400, "This type of request is not supported.")
+
 # pragma mark - helper functions
 def validate_first_name(first_name):
     return 0 < len(first_name) <= 40
