@@ -89,6 +89,43 @@ def api_seeds():
     else:
         abort(400, "Invalid or missing arguments")
 
+@app.route("/seeds/create", methods=["POST"])
+def api_create_seed():
+    """
+    Create a new seed with the specified title and link in the specified circle.
+    """
+    if request.method == "POST":
+        for item in ["title", "link", "circle", "user_id"]:
+            if not item in request.form:
+                abort(400, "Missing arguments.")
+
+        try:
+            circle_id = int(request.form["circle"].strip())
+            user_id = int(request.form["user_id"].strip())
+        except:
+            abort(400, "Invalid arguments.")
+
+        title = request.form["title"].strip()
+        link = request.form["link"].strip()
+        # TODO: validate title and link
+
+        seeder = User.query.filter_by(id=user_id).first()
+        circle = Circle.query.filter_by(id=circle_id).first()
+
+        if seeder and circle:
+            new_seed = Seed(title=title, link=link, circle_id=circle_id, seeder_id=user_id, isActive=True)
+        else:
+            abort(404, "Did not find circle or user.")
+
+        try:
+            db.session.add(new_seed)
+            db.session.commit()
+            return jsonify({"seed": new_seed.serialize}), 200
+        except:
+            abort(500, "Something went wrong. Could not create seed.")
+    else:
+        abort(400, "This type of request is not supported.")
+
 @app.route("/seed", methods=["GET"])
 def api_seed():
     """
