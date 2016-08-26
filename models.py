@@ -33,6 +33,16 @@ class Circle(db.Model):
     def __repr__(self):
         return '<Circle %r>' % self.id
 
+    @property
+    def serialize(self):
+        return {
+            'id' : self.id,
+            'point': '(%f, %f)' % (self.center_lat, self.center_lng),
+            'radius': self.radius,
+            'name': self.name,
+            'city': self.city,
+            'seeds': 'seeds'
+        }
 
 class Seed(db.Model):
     # title: Descriptive title of seed
@@ -44,7 +54,7 @@ class Seed(db.Model):
     __tablename__ = 'seeds'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String())
-    link = db.Column
+    link = db.Column(db.String())
     circle_id = db.Column(db.Integer, db.ForeignKey('circles.id'))
     seeder_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     isActive = db.Column(db.Boolean)
@@ -58,6 +68,16 @@ class Seed(db.Model):
     def __repr__(self):
         return '<Seed %r>' % self.id
 
+    @property
+    def serialize(self):
+        return {
+            'id' : self.id,
+            'title' : self.title,
+            'link' : self.link,
+            'circle_id' : self.circle_id,
+            'seeder_id' : self.seeder_id,
+            'isActive' : self.isActive
+        }
 
 class User(db.Model):
     # first_name
@@ -82,6 +102,17 @@ class User(db.Model):
 
     def __repr__(self):
         return '<User %r>' % self.id
+
+    @property
+    def serialize(self):
+        return {
+            'id' : self.id,
+            'first_name' : self.first_name,
+            'last_initial' : self.last_initial,
+            'username': self.username,
+            'notifications': self.notifications,
+            'seeds': 'seeds'
+        }
 
 class Seedbag():
     pass

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, json, g
+from flask import Flask, render_template, request, g, jsonify
 import os, math
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
@@ -51,11 +51,11 @@ def api_circle():
                 geodesic_dist = (math.acos(temp_dist))*6371000
 
                 if geodesic_dist <= a_circle.radius:
-                    return "You are in the circle: %s" % a_circle.name
+                    return jsonify({"in_circle": True, "circles": a_circle.serialize}), 200
                 else:
-                    return "Not in circle, but found %d nearby circles." % num_circles_found
+                    return jsonify({"in_circle": False, "circles": [i.serialize for i in nearby.all()]}), 200
         else:
-            return "Sorry, no circles nearby."
+            return jsonify({"in_circle": False, "circles": []}), 200
 
 def alternative_circle_search():
     # This one does it with max 2 queries instead of comparing geodesics of nearby set
