@@ -177,17 +177,25 @@ def api_users_update():
     Toggle notifications off or on for the specified user.
     """
     if request.method == "POST":
-        user_id = request.form["user_id"]
+        user_id = request.form.get("user_id", None)
+
+        if not user_id:
+            abort(400, "User ID missing.")
 
         notifications = request.form.get("notifications", "")
         first_name = request.form.get("first_name", "")
         last_initial = request.form.get("last_initial", "")
         username = request.form.get("username", "")
 
+        if not validate_first_name(first_name) or not validate_last_initial(last_initial):
+            abort(400, "Invalid arguments - name and username can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
+
+        if not validate_username(username):
+            abort(400, "That username is taken.")
+
         user = User.query.filter_by(id=user_id).first()
 
         if user:
-            # TODO: validate fields
             field_updated = False
 
             if notifications and notifications != user.notifications:
@@ -240,31 +248,26 @@ def api_create_account():
 
         if first_name and last_initial and username:
 
-            if len(first_name) > 40 or \
-               len(last_initial) > 5 or \
-               len(username) > 40 or \
-               not last_initial.isalpha():
-                abort(400, "Invalid arguments - name and username can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
+            if not validate_first_name(first_name) or not validate_last_initial(last_initial):
+                abort(400, "Invalid arguments - name can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
 
-            existing_user = User.query.filter_by(username=username).first()
+            if not validate_username(username):
+                abort(400, "Invalid username.")
 
-            if not existing_user:
-                try:
-                    new_user = User(first_name=first_name,
-                                last_initial=last_initial,
-                                username=username,
-                                notifications=False)
-                except:
-                    abort(400, "Please check arguments again.")
+            try:
+                new_user = User(first_name=first_name,
+                            last_initial=last_initial,
+                            username=username,
+                            notifications=False)
+            except:
+                abort(400, "Invalid arguments.")
 
-                try:
-                    db.session.add(new_user)
-                    db.session.commit()
-                    return jsonify({"user": new_user.serialize}), 200
-                except Exception as e:
-                    abort(500, "Something went wrong. Could not create new user.")
-            else:
-                abort(400, "That username is taken.")
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+                return jsonify({"user": new_user.serialize}), 200
+            except Exception as e:
+                abort(500, "Something went wrong. Could not create new user.")
 
         else:
             abort(400, "Invalid or missing arguments")
@@ -273,6 +276,22 @@ def api_create_account():
         abort(400, "This type of request is not supported.")
 
 # pragma mark - helper functions
+def validate_first_name(first_name):
+    return 0 < len(first_name) <= 40
+
+def validate_last_initial(last_initial):
+    if 0 < len(last_initial) <= 5:
+        if last_initial.isalpha():
+            return True
+    return False
+
+def validate_username(username):
+    if 0 < len(username) <= 40:
+        existing_user = User.query.filter_by(username=username).first()
+        if not existing_user:
+            return True
+    return False
+
 def populate_GIS():
     circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
     circle2 = Circle(center_lat=37.414172, center_lng=-122.038672, point='POINT(-122.038672 37.414172)', radius='200', name='airbase', city='Cupertino')
