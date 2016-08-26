@@ -146,6 +146,46 @@ def api_seed():
     else:
         abort(400, "Invalid or missing arguments.")
 
+@app.route("/reseed", methods=["POST"])
+def api_reseed():
+    """
+    Reseed an existing seed in a new specified circle from the specified seedbag of user. 
+    Return error if the circle_id is the same as the original circle of seed.
+    """
+    if request.method == "POST":
+        try:
+            #import pdb; pdb.set_trace()
+            user_id = int(request.form.get("user_id", None))
+            circle_id = int(request.form.get("circle_id", None))
+            seed_id = int(request.form.get("seed_id", None))
+        except:
+            abort(404, "Missing or invalid arguments.")
+
+        seed = Seed.query.filter_by(id=seed_id).first()
+
+        if seed:
+            if seed.circle_id == circle_id:
+                abort(400, "You can't reseed in the same circle.")
+
+            user = User.query.filter_by(id=user_id).first()
+            circle = Circle.query.filter_by(id=circle_id).first()
+
+            if user and circle:
+                # TODO: validate title and link
+                # Create new seed in new circle 
+                new_seed = Seed(title=seed.title, link=seed.link, circle_id=circle_id, seeder_id=user_id, original_seeder_id=seed.seeder_id, isActive=True)
+
+                try:
+                    db.session.add(new_seed)
+                    db.session.commit()
+                    return jsonify({"seed": new_seed.serialize}), 200
+                except:
+                    abort(500, "Something went wrong. Could not re-seed.")
+            else:
+                abort(400, "Invalid arguments.")
+    else:
+        abort(400, "This type of request is not supported.")
+
 @app.route("/users", methods=["GET"])
 def api_users():
     """

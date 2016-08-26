@@ -57,13 +57,15 @@ class Seed(db.Model):
     link = db.Column(db.String())
     circle_id = db.Column(db.Integer, db.ForeignKey('circles.id'))
     seeder_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    original_seeder_id = db.Column(db.Integer)
     isActive = db.Column(db.Boolean)
 
-    def __init__(self, title, link, circle_id, seeder_id, isActive):
+    def __init__(self, title, link, circle_id, seeder_id, original_seeder_id, isActive):
         self.title = title
         self.link = link
         self.circle_id = circle_id
         self.seeder_id = seeder_id
+        self.original_seeder_id = original_seeder_id
         self.isActive = isActive
 
     def __repr__(self):
@@ -77,6 +79,7 @@ class Seed(db.Model):
             'link' : self.link,
             'circle_id' : self.circle_id,
             'seeder_id' : self.seeder_id,
+            'original_seeder_id': self.original_seeder_id,
             'isActive' : self.isActive
         }
 
