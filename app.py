@@ -146,6 +146,33 @@ def api_seed():
     else:
         abort(400, "Invalid or missing arguments.")
 
+@app.route("/seeds/delete", methods=["POST"])
+def api_delete_seed():
+    """
+    Delete the specified seed.
+    """
+    if request.method == "POST":
+        try:
+            seed_id = int(request.form.get("seed_id"))
+            user_id = int(request.form.get("user_id"))
+        except:
+            abort(400, "Invalid arguments")
+
+        seed = Seed.query.filter_by(id=seed_id).first()
+
+        # TODO: check if this user is allowed to delete the seed
+        if seed and seed.seeder_id == user_id:
+            try:
+                db.session.delete(seed)
+                db.session.commit()
+                return jsonify({"seed": ""}), 200
+            except:
+                abort(500, "Something went wrong. Could not delete seed.")
+        else:
+            abort(400, "Invalid arguments.")
+    else:
+        abort(400, "This type of request is not supported.")
+
 @app.route("/reseed", methods=["POST"])
 def api_reseed():
     """
