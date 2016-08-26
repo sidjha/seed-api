@@ -17,9 +17,9 @@
 
 > Create a new account with the specified first name, last initial and username. All three fields are required.
 
-* GET /users?username=XXXX
+* GET /users?username=XXXX&user_id=YYYY
 
-> Return the user with the specified username.
+> Return the user with the specified username or user_id.
 
 * GET /seedbags?username=XXXX
 
