@@ -30,8 +30,8 @@ def api_circle():
     if "lat" in request.args and "lng" in request.args:
         # Parse arguments, extract latitude and longitude
         try:
-            lat = float(request.args.get("lat", ''))
-            lng = float(request.args.get('lng', ''))
+            lat = float(request.args.get("lat", ""))
+            lng = float(request.args.get("lng", ""))
 
             if (lat and lng) and (-90 <= lat <= 90) and (-180 <= lng <= 180):
                 pass
@@ -75,7 +75,7 @@ def api_seeds():
     Returns a list of seeds in the circle with the specified circle_id.
     """
     try:
-        circle_id = int(request.args.get('circle_id'))
+        circle_id = int(request.args.get("circle_id"))
     except:
         abort(400, "Invalid arguments.")
 
@@ -95,7 +95,7 @@ def api_seed():
     Returns a Seed with the specified seed_id.
     """
     try:
-        seed_id = int(request.args.get('seed_id'))
+        seed_id = int(request.args.get("seed_id"))
     except:
         abort(400, "Invalid arguments")
 
