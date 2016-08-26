@@ -171,6 +171,59 @@ def api_users():
 
     abort(400, "Invalid or missing arguments")
 
+@app.route("/users/update", methods=["POST"])
+def api_users_update():
+    """
+    Toggle notifications off or on for the specified user.
+    """
+    if request.method == "POST":
+        user_id = request.form["user_id"]
+
+        notifications = request.form.get("notifications", "")
+        first_name = request.form.get("first_name", "")
+        last_initial = request.form.get("last_initial", "")
+        username = request.form.get("username", "")
+
+        user = User.query.filter_by(id=user_id).first()
+
+        if user:
+            # TODO: validate fields
+            field_updated = False
+
+            if notifications and notifications != user.notifications:
+                user.notifications = notifications
+                field_updated = True
+
+            if first_name and first_name != user.first_name:
+                user.first_name = first_name
+                field_updated = True
+
+            if last_initial and last_initial != user.last_initial:
+                user.last_initial = last_initial
+                field_updated = True
+
+            if username and username != user.username:
+                existing_user = User.query.filter_by(username=username).first()
+
+                if not existing_user:
+                    user.username = username
+                    field_updated = True
+                else:
+                    abort(400, "Username already exists.")
+
+            if field_updated:
+                try:
+                    db.session.commit()
+                    return jsonify({"user": user.serialize}), 200
+                except:
+                    abort(500, "Something went wrong.")
+            else:
+                return jsonify({"user": user.serialize}), 200
+        else:
+            abort(404, "User not found.")
+    else:
+        abort(400, "This type of request is not supported.")
+
 @app.route("/accounts/create", methods=["POST"])
 def api_create_account():
     """
