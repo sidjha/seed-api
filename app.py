@@ -134,6 +134,54 @@ def api_users():
 
     abort(400, "Invalid or missing arguments")
 
+@app.route("/accounts/create", methods=["POST"])
+def api_create_account():
+    """
+    Create a new account with the specified first name, last initial and username. 
+     first_name (required): 1-40 characters.
+     last_initial (required): 1-5 characters, no numbers.
+     username (required): 1-40 characters.
+    Returns: JSON rep of user.
+    """
+    if request.method == "POST":
+        first_name = request.form["first_name"].strip()
+        last_initial = request.form["last_initial"].strip()
+        username = request.form["username"].strip()
+
+        if first_name and last_initial and username:
+
+            if len(first_name) > 40 or \
+               len(last_initial) > 5 or \
+               len(username) > 40 or \
+               not last_initial.isalpha():
+                abort(400, "Invalid arguments - name and username can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
+
+            existing_user = User.query.filter_by(username=username).first()
+
+            if not existing_user:
+                try:
+                    new_user = User(first_name=first_name,
+                                last_initial=last_initial,
+                                username=username,
+                                notifications=False)
+                except:
+                    abort(400, "Please check arguments again.")
+
+                try:
+                    db.session.add(new_user)
+                    db.session.commit()
+                    return jsonify({"user": new_user.serialize}), 200
+                except Exception as e:
+                    abort(500, "Something went wrong. Could not create new user.")
+            else:
+                abort(400, "That username is taken.")
+
+        else:
+            abort(400, "Invalid or missing arguments")
+
+    else:
+        abort(400, "This type of request is not supported.")
+
 # pragma mark - helper functions
 def populate_GIS():
     circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
