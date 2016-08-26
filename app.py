@@ -109,6 +109,31 @@ def api_seed():
     else:
         abort(400, "Invalid or missing arguments.")
 
+@app.route("/users", methods=["GET"])
+def api_users():
+    """
+    Returns the user with the specified username or user_id.
+    """
+    username = request.args.get("username")
+    user_id = request.args.get("user_id")
+
+    if username:
+        user = User.query.filter_by(username=username).first()
+
+        if user:
+            return jsonify({"user": user.serialize}), 200
+        else:
+            abort(404, "User does not exist.")
+    if user_id:
+        user = User.query.filter_by(id=user_id).first()
+
+        if user:
+            return jsonify({"user": user.serialize}), 200
+        else:
+            abort(404, "User does not exist.")
+
+    abort(400, "Invalid or missing arguments")
+
 # pragma mark - helper functions
 def populate_GIS():
     circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
