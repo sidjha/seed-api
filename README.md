@@ -1,5 +1,7 @@
 # seed-api
-## Endpoints
+## API Endpoints
+
+### Collection endpoints
 
 * GET /circles?lat=xx.xx,lng=yy.yy
 
@@ -8,6 +10,8 @@
 * GET /seeds?circle_id=xxxxxxx
 
 > Returns a list of seeds in the circle with specified circle ID.
+
+### Seed endpoints
 
 * GET /seed?seed_id=xxxxxxx    
 
@@ -25,6 +29,8 @@
 
 > Reseed an existing seed in a new specified circle from the specified user’s seedbag. Return error if the circle_id is the same as the seed’s original circle.
 
+### User endpoints
+
 * POST /user/create?first_name=XXXX&last_initial=YYYY&username=xxxx
 
 > Create a new user with the specified first name, last initial and username. All three fields are required.
@@ -41,15 +47,17 @@
 
 > Delete the specified user.
 
-* GET /seedbags?username=XXXX
+### Seedbag endpoints
+
+* GET /seedbag?username=XXXX
 
 > Return the seedbag for the specified user.
 
-* POST /seedbags/add?seed_id=XXXX&seedbag_id=YYYY
+* POST /seedbag/add?seed_id=XXXX&seedbag_id=YYYY
 
 > Add the specified seed in the specified seedbag.
 
-* POST /seedbags/delete?seed_id=XXXX&seedbag_id=YYYY
+* POST /seedbag/delete?seed_id=XXXX&seedbag_id=YYYY
 
 > Delete the specified seed from the specified seedbag.
 
