@@ -1,6 +1,8 @@
-from app import db
 from sqlalchemy.dialects.postgresql import JSON
 from geoalchemy2 import Geography
+
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy()
 
 class Circle(db.Model):
     # center_lat: latitude of center point

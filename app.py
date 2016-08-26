@@ -1,17 +1,18 @@
 from flask import Flask, render_template, request, json, g
-import os
-from flask_sqlalchemy import SQLAlchemy
+import os, math
 from sqlalchemy import func
+from flask_sqlalchemy import SQLAlchemy
+from models import Circle, Seed, User, db
 
 app = Flask(__name__)
 APP_SETTINGS="config.DevConfig"
 app.config.from_object(APP_SETTINGS)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
-from models import Circle, Seed, User
+db.init_app(app)
 
-NEARBY_CIRCLES_THRESHOLD_DIST = 2000.0 # in meters. 
+NEARBY_CIRCLES_THRESHOLD_DIST = 2000.0 # in meters.
+NUM_NEARBY_CIRCLES_LIMIT = 5 # number of nearby circles to search
 
 @app.route("/")
 def index():
@@ -33,15 +34,53 @@ def api_circle():
         point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat)) 
 
         # call PostGIS function ST_DWithin to find 5 nearby points
-        nearby = db.session.query(Circle).filter(func.ST_DWithin(point, Circle.point, NEARBY_CIRCLES_THRESHOLD_DIST)).limit(5)
+        nearby = db.session.query(Circle) \
+                    .filter(func.ST_DWithin(point, Circle.point, NEARBY_CIRCLES_THRESHOLD_DIST)) \
+                    .order_by(func.ST_Distance(point, Circle.point)) \
+                    .limit(NUM_NEARBY_CIRCLES_LIMIT)
 
-        # TODO: order nearby circles by distance, in ascending order
+        num_circles_found = nearby.count()
+        
+        if num_circles_found > 0:
+            for a_circle in nearby:
+                p_lat = math.radians(a_circle.center_lat)
+                p_lng = math.radians(a_circle.center_lng)
+                lat_r = math.radians(lat)
+                lng_r = math.radians(lng)
+                temp_dist = (math.sin(lat_r)*math.sin(p_lat)+math.cos(lat_r)*math.cos(p_lat)*math.cos(lng_r - p_lng))
+                geodesic_dist = (math.acos(temp_dist))*6371000
+
+                if geodesic_dist <= a_circle.radius:
+                    return "You are in the circle: %s" % a_circle.name
+                else:
+                    return "Not in circle, but found %d nearby circles." % num_circles_found
+        else:
+            return "Sorry, no circles nearby."
+
+def alternative_circle_search():
+    # This one does it with max 2 queries instead of comparing geodesics of nearby set
+
+    # Query 1: Check if you're within a circle
+    nearby = db.session.query(Circle) \
+                .filter(func.ST_DWithin(point, Circle.point, Circle.radius)) \
+                .order_by(func.ST_Distance(point, Circle.point)) \
+                .limit(NUM_NEARBY_CIRCLES_LIMIT)
+
+    if nearby.count() > 0:
+        return "You are within the circle: %s" % nearby.first().name
+    else:
+        # Query 2: Find nearby circles
+        nearby = db.session.query(Circle) \
+                .filter(func.ST_DWithin(point, Circle.point, NEARBY_CIRCLES_THRESHOLD_DIST)) \
+                .order_by(func.ST_Distance(point, Circle.point)) \
+                .limit(NUM_NEARBY_CIRCLES_LIMIT)
 
         if nearby.count() > 0:
-            # TODO: convert list to JSON-formatted list
-            return "Found %d nearby circles!" % nearby.count()
+            # TODO: determine whether point is WITHIN any circle
+            # TODO: convert returned data to JSON
+            return "Not in circle, but found %d nearby circles!" % nearby.count()
         else:
-            return "Sorry, no circles found nearby."
+            return "Sorry, no nearby circles found."
 
 def is_in_circle(latitude, longitude):
     # problem: need an algorithm that determines whether these coords are within a defined circle
