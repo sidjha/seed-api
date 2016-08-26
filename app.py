@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, g, jsonify
+from flask import Flask, render_template, request, g, jsonify, abort
 import os, math
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
@@ -14,6 +14,8 @@ db.init_app(app)
 NEARBY_CIRCLES_THRESHOLD_DIST = 2000.0 # in meters.
 NUM_NEARBY_CIRCLES_LIMIT = 5 # number of nearby circles to search
 
+# pragma mark - API methods
+
 @app.route("/")
 def index():
     return "seed v1.0"
@@ -25,11 +27,19 @@ def api_circle():
     Otherwise, returns a list of nearby circles based on specified latitude and longitude.
     """
 
-    # Parse arguments, extract latitude and longitude
-    lat = float(request.args.get("lat", ''))
-    lng = float(request.args.get('lng', ''))
+    if "lat" in request.args and "lng" in request.args:
+        # Parse arguments, extract latitude and longitude
+        try:
+            lat = float(request.args.get("lat", ''))
+            lng = float(request.args.get('lng', ''))
 
-    if lat and lng:
+            if (lat and lng) and (-90 <= lat <= 90) and (-180 <= lng <= 180):
+                pass
+            else:
+                raise ValueError("Invalid arguments")
+        except:
+            abort(400, "Invalid arguments")
+
         # convert current coordinates to a Geography object
         point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat)) 
 
@@ -56,6 +66,18 @@ def api_circle():
                     return jsonify({"in_circle": False, "circles": [i.serialize for i in nearby.all()]}), 200
         else:
             return jsonify({"in_circle": False, "circles": []}), 200
+    else:
+        abort(400, "Missing arguments")
+
+
+# pragma mark - helper functions
+
+def populate_GIS():
+    circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
+    circle2 = Circle(center_lat=37.414172, center_lng=-122.038672, point='POINT(-122.038672 37.414172)', radius='200', name='airbase', city='Cupertino')
+    circle4 = Circle(center_lat=37.777025, center_lng=-122.416583, point='POINT(-122.416583 37.777025)', radius='200', name='twitter hq', city='San Francisco')
+    circle3 = Circle(center_lat=40.748636, center_lng=-73.985654, point='POINT(-73.985654 40.748636)', radius='100', name='empire state', city='Empire State Bldg')
+
 
 def alternative_circle_search():
     # This one does it with max 2 queries instead of comparing geodesics of nearby set
@@ -81,34 +103,6 @@ def alternative_circle_search():
             return "Not in circle, but found %d nearby circles!" % nearby.count()
         else:
             return "Sorry, no nearby circles found."
-
-def is_in_circle(latitude, longitude):
-    # problem: need an algorithm that determines whether these coords are within a defined circle
-
-    # solution 2:
-    # take the input coordinates A.
-    # do a search of coordinates in (coordinates, radius) pairs to find all coordinates less than 1000m from A.
-    # for every coordinate C in S:
-    #  if geodesic distance between A and C is less than C's radius:
-    #   that's the circle A belongs to.
-    #   return.
-    # if no match, then there are no circles closeby.
-
-    # TODO: implementation of solution 2
-    # Check list to see whether point is inside existing circle
-    # for each point in list
-    # 1. convert point to radians
-    # 2. calculate geodesic
-    # a = (math.sin(lat)*math.sin(p_lat)+math.cos(lat)*math.cos(p_lat)*math.cos(lng - p_lng))
-    # dist = (math.acos(a))*6371
-    # 3. if distance <= radius, point is inside. convert to JSON and return.
-    pass
-
-def populate_GIS():
-    circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
-    circle2 = Circle(center_lat=37.414172, center_lng=-122.038672, point='POINT(-122.038672 37.414172)', radius='200', name='airbase', city='Cupertino')
-    circle4 = Circle(center_lat=37.777025, center_lng=-122.416583, point='POINT(-122.416583 37.777025)', radius='200', name='twitter hq', city='San Francisco')
-    circle3 = Circle(center_lat=40.748636, center_lng=-73.985654, point='POINT(-73.985654 40.748636)', radius='100', name='empire state', city='Empire State Bldg')
 
 
 if __name__ == "__main__":
