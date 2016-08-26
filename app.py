@@ -74,7 +74,11 @@ def api_seeds():
     """
     Returns a list of seeds in the circle with the specified circle_id.
     """
-    circle_id = request.args.get('circle_id')
+    try:
+        circle_id = int(request.args.get('circle_id'))
+    except:
+        abort(400, "Invalid arguments.")
+
     if circle_id:
         circle = Circle.query.filter_by(id=circle_id).first()
 
@@ -85,6 +89,25 @@ def api_seeds():
     else:
         abort(400, "Invalid or missing arguments")
 
+@app.route("/seed", methods=["GET"])
+def api_seed():
+    """
+    Returns a Seed with the specified seed_id.
+    """
+    try:
+        seed_id = int(request.args.get('seed_id'))
+    except:
+        abort(400, "Invalid arguments")
+
+    if seed_id:
+        seed = Seed.query.filter_by(id=seed_id).first()
+
+        if seed:
+            return jsonify({"seed": seed.serialize}), 200
+        else:
+            abort(404, "Seed does not exist.")
+    else:
+        abort(400, "Invalid or missing arguments.")
 
 # pragma mark - helper functions
 def populate_GIS():
