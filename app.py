@@ -21,7 +21,7 @@ def index():
     return "seed v1.0"
 
 @app.route("/circles", methods=["GET"])
-def api_circle():
+def api_get_circle():
     """
     Returns a matching circle if the specified latitude and longitude fall within a defined circle. 
     Otherwise, returns a list of nearby circles based on specified latitude and longitude.
@@ -69,8 +69,9 @@ def api_circle():
     else:
         abort(400, "Missing arguments")
 
+
 @app.route("/seeds", methods=["GET"])
-def api_seeds():
+def api_get_seeds():
     """
     Returns a list of seeds in the circle with the specified circle_id.
     """
@@ -89,7 +90,8 @@ def api_seeds():
     else:
         abort(400, "Invalid or missing arguments")
 
-@app.route("/seeds/create", methods=["POST"])
+
+@app.route("/seed/create", methods=["POST"])
 def api_create_seed():
     """
     Create a new seed with the specified title and link in the specified circle.
@@ -126,8 +128,9 @@ def api_create_seed():
     else:
         abort(400, "This type of request is not supported.")
 
+
 @app.route("/seed", methods=["GET"])
-def api_seed():
+def api_get_seed():
     """
     Returns a Seed with the specified seed_id.
     """
@@ -146,7 +149,8 @@ def api_seed():
     else:
         abort(400, "Invalid or missing arguments.")
 
-@app.route("/seeds/delete", methods=["POST"])
+
+@app.route("/seed/delete", methods=["POST"])
 def api_delete_seed():
     """
     Delete the specified seed.
@@ -172,6 +176,7 @@ def api_delete_seed():
             abort(400, "Invalid arguments.")
     else:
         abort(400, "This type of request is not supported.")
+
 
 @app.route("/reseed", methods=["POST"])
 def api_reseed():
@@ -213,8 +218,53 @@ def api_reseed():
     else:
         abort(400, "This type of request is not supported.")
 
-@app.route("/users", methods=["GET"])
-def api_users():
+
+@app.route("/user/create", methods=["POST"])
+def api_create_user():
+    """
+    Create a new account with the specified first name, last initial and username. 
+     first_name (required): 1-40 characters.
+     last_initial (required): 1-5 characters, no numbers.
+     username (required): 1-40 characters.
+    Returns: JSON rep of user.
+    """
+    if request.method == "POST":
+        first_name = request.form["first_name"].strip()
+        last_initial = request.form["last_initial"].strip()
+        username = request.form["username"].strip()
+
+        if first_name and last_initial and username:
+
+            if not validate_first_name(first_name) or not validate_last_initial(last_initial):
+                abort(400, "Invalid arguments - name can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
+
+            if not validate_username(username):
+                abort(400, "Invalid username.")
+
+            try:
+                new_user = User(first_name=first_name,
+                            last_initial=last_initial,
+                            username=username,
+                            notifications=False)
+            except:
+                abort(400, "Invalid arguments.")
+
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+                return jsonify({"user": new_user.serialize}), 200
+            except Exception as e:
+                abort(500, "Something went wrong. Could not create new user.")
+
+        else:
+            abort(400, "Invalid or missing arguments")
+
+    else:
+        abort(400, "This type of request is not supported.")
+
+
+@app.route("/user", methods=["GET"])
+def api_get_user():
     """
     Returns the user with the specified username or user_id.
     """
@@ -238,8 +288,9 @@ def api_users():
 
     abort(400, "Invalid or missing arguments")
 
-@app.route("/users/update", methods=["POST"])
-def api_users_update():
+
+@app.route("/user/update", methods=["POST"])
+def api_update_user():
     """
     Toggle notifications off or on for the specified user.
     """
@@ -299,50 +350,8 @@ def api_users_update():
     else:
         abort(400, "This type of request is not supported.")
 
-@app.route("/accounts/create", methods=["POST"])
-def api_create_account():
-    """
-    Create a new account with the specified first name, last initial and username. 
-     first_name (required): 1-40 characters.
-     last_initial (required): 1-5 characters, no numbers.
-     username (required): 1-40 characters.
-    Returns: JSON rep of user.
-    """
-    if request.method == "POST":
-        first_name = request.form["first_name"].strip()
-        last_initial = request.form["last_initial"].strip()
-        username = request.form["username"].strip()
 
-        if first_name and last_initial and username:
-
-            if not validate_first_name(first_name) or not validate_last_initial(last_initial):
-                abort(400, "Invalid arguments - name can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
-
-            if not validate_username(username):
-                abort(400, "Invalid username.")
-
-            try:
-                new_user = User(first_name=first_name,
-                            last_initial=last_initial,
-                            username=username,
-                            notifications=False)
-            except:
-                abort(400, "Invalid arguments.")
-
-            try:
-                db.session.add(new_user)
-                db.session.commit()
-                return jsonify({"user": new_user.serialize}), 200
-            except Exception as e:
-                abort(500, "Something went wrong. Could not create new user.")
-
-        else:
-            abort(400, "Invalid or missing arguments")
-
-    else:
-        abort(400, "This type of request is not supported.")
-
-@app.route("/users/delete", methods=["POST"])
+@app.route("/user/delete", methods=["POST"])
 def api_delete_user():
     """
     Delete the specified user and all their seeds.
@@ -371,6 +380,7 @@ def api_delete_user():
             abort(400, "Missing arguments.")
     else:
         abort(400, "This type of request is not supported.")
+
 
 # pragma mark - helper functions
 def validate_first_name(first_name):
