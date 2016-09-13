@@ -20,7 +20,7 @@ class Circle(db.Model):
     radius = db.Column(db.Integer)
     name = db.Column(db.String())
     city = db.Column(db.String())
-    seeds = db.relationship('Seed', backref='circle', lazy='dynamic')
+    #seeds = db.relationship('Seed', backref='circle', lazy='dynamic')
 
     def __init__(self, center_lat, center_lng, point, radius, name, city):
         self.center_lat = center_lat
@@ -41,8 +41,8 @@ class Circle(db.Model):
             'center_lng': self.center_lng,
             'radius': self.radius,
             'name': self.name,
-            'city': self.city,
-            'seeds': 'seeds'
+            'city': self.city
+            #'seeds': 'seeds'
         }
 
 class Seed(db.Model):
@@ -56,18 +56,28 @@ class Seed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String())
     link = db.Column(db.String())
-    circle_id = db.Column(db.Integer, db.ForeignKey('circles.id'))
+    #circle_id = db.Column(db.Integer, db.ForeignKey('circles.id'))
+    point = db.Column(Geography(geometry_type='POINT', srid=4326))
+    lat = db.Column(db.Float)
+    lng = db.Column(db.Float)
     seeder_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    seeder_name = db.Column(db.String())
     original_seeder_id = db.Column(db.Integer)
     isActive = db.Column(db.Boolean)
+    timestamp = db.Column(db.DateTime)
 
-    def __init__(self, title, link, circle_id, seeder_id, original_seeder_id, isActive):
+    def __init__(self, title, link, point, lat, lng, seeder_id, seeder_name, original_seeder_id, isActive, timestamp):
         self.title = title
         self.link = link
-        self.circle_id = circle_id
+        #self.circle_id = circle_id
+        self.point = point
+        self.lat = lat
+        self.lng = lng
         self.seeder_id = seeder_id
         self.original_seeder_id = original_seeder_id
         self.isActive = isActive
+        self.timestamp = timestamp
+        self.seeder_name = seeder_name
 
     def __repr__(self):
         return '<Seed %r>' % self.id
@@ -78,10 +88,13 @@ class Seed(db.Model):
             'id' : self.id,
             'title' : self.title,
             'link' : self.link,
-            'circle_id' : self.circle_id,
+            'lat' : self.lat,
+            'lng' : self.lng,
             'seeder_id' : self.seeder_id,
             'original_seeder_id': self.original_seeder_id,
-            'isActive' : self.isActive
+            'isActive' : self.isActive,
+            'timestamp': self.timestamp,
+            'seeder_name': self.seeder_name
         }
 
 class User(db.Model):

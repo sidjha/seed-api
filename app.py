@@ -3,6 +3,7 @@ import os, math
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
 from models import Circle, Seed, User, db
+from datetime import datetime
 
 app = Flask(__name__)
 APP_SETTINGS="config.DevConfig"
@@ -13,6 +14,8 @@ db.init_app(app)
 
 NEARBY_CIRCLES_THRESHOLD_DIST = 2000.0 # in meters.
 NUM_NEARBY_CIRCLES_LIMIT = 5 # number of nearby circles to search
+
+NEARBY_SEEDS_THRESHOLD_DIST = 500.0 # in meters.
 
 # pragma mark - API methods
 
@@ -73,20 +76,34 @@ def api_get_circle():
 @app.route("/seeds", methods=["GET"])
 def api_get_seeds():
     """
-    Returns a list of seeds in the circle with the specified circle_id.
+    Returns a list of seeds near the latitude and longitude.
     """
-    try:
-        circle_id = int(request.args.get("circle_id"))
-    except:
-        abort(400, "Invalid arguments.")
 
-    if circle_id:
-        circle = Circle.query.filter_by(id=circle_id).first()
+    if "lat" in request.args and "lng" in request.args:
+        # Parse arguments, extract latitude and longitude
+        try:
+            lat = float(request.args.get("lat", ""))
+            lng = float(request.args.get("lng", ""))
 
-        if circle:
-            return jsonify({"seeds": [i.serialize for i in circle.seeds]}), 200
-        else:
-            abort(404, "Circle does not exist.")
+            if (lat and lng) and (-90 <= lat <= 90) and (-180 <= lng <= 180):
+                pass
+            else:
+                raise ValueError("Invalid arguments")
+        except:
+            abort(400, "Invalid arguments")
+
+        # convert current coordinates to a Geography object
+        point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat))
+
+        # call PostGIS function ST_DWithin to find nearby seeds
+        nearby = db.session.query(Seed) \
+                    .filter(func.ST_DWithin(point, Seed.point, NEARBY_SEEDS_THRESHOLD_DIST)) \
+                    .order_by(func.ST_Distance(point, Seed.point))
+
+        num_seeds_found = nearby.count()
+
+        return jsonify({"seeds": [i.serialize for i in nearby.all()]}), 200
+
     else:
         abort(400, "Invalid or missing arguments")
 
@@ -94,30 +111,34 @@ def api_get_seeds():
 @app.route("/seed/create", methods=["POST"])
 def api_create_seed():
     """
-    Create a new seed with the specified title and link in the specified circle.
+    Create a new seed with the specified title and link and specified location.
     """
     if request.method == "POST":
-        for item in ["title", "link", "circle", "user_id"]:
+        for item in ["title", "link", "lat", "lng", "user_id"]:
             if not item in request.form:
                 abort(400, "Missing arguments.")
 
         try:
-            circle_id = int(request.form["circle"].strip())
             user_id = int(request.form["user_id"].strip())
         except:
             abort(400, "Invalid arguments.")
 
         title = request.form["title"].strip()
         link = request.form["link"].strip()
+        lat = request.form["lat"].strip()
+        lng = request.form["lng"].strip()
         # TODO: validate title and link
 
         seeder = User.query.filter_by(id=user_id).first()
-        circle = Circle.query.filter_by(id=circle_id).first()
 
-        if seeder and circle:
-            new_seed = Seed(title=title, link=link, circle_id=circle_id, seeder_id=user_id, isActive=True)
+        if seeder:
+            point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat))
+            new_seed = Seed(title=title, link=link,
+                point=point, lat=lat, lng=lng,
+                seeder_id=user_id, seeder_name=seeder.username,
+                timestamp=datetime.utcnow(), isActive=True)
         else:
-            abort(404, "Did not find circle or user.")
+            abort(404, "Did not find user.")
 
         try:
             db.session.add(new_seed)
