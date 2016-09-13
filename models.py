@@ -37,7 +37,8 @@ class Circle(db.Model):
     def serialize(self):
         return {
             'id' : self.id,
-            'point': '(%f, %f)' % (self.center_lat, self.center_lng),
+            'center_lat': self.center_lat,
+            'center_lng': self.center_lng,
             'radius': self.radius,
             'name': self.name,
             'city': self.city,
