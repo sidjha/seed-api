@@ -3,13 +3,9 @@
 
 ### Collection endpoints
 
-* GET /circles?lat=xx.xx,lng=yy.yy
+* GET /seeds?lat=xx.xx,lng=yy.yy
 
-> Returns a matching circle if the specified latitude and longitude fall within a defined circle. Otherwise, returns a list of nearby circles based on specified latitude and longitude.
-
-* GET /seeds?circle_id=xxxxxxx
-
-> Returns a list of seeds in the circle with specified circle ID.
+> Returns a list of seeds near the current lat and long coordinates.
 
 ### Seed endpoints
 
@@ -17,9 +13,9 @@
 
 > Returns a Seed with the specified seed_id.
 
-* POST /seed/create?title=XXXX&link=YYYY&circle=ZZZZ&username=ABC123
+* POST /seed/create?title=XXXX&link=YYYY&circle=ZZZZ&username=ABC123&lat=xx.xx&lng=xx.xx
 
-> Create a new seed with the specified title and link in the specified circle.
+> Create a new seed with the specified title and link at the specified coordinates.
 
 * POST /seed/delete?seed_id=XXX
 
