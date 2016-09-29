@@ -132,10 +132,11 @@ def api_create_seed():
         seeder = User.query.filter_by(id=user_id).first()
 
         if seeder:
-            point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat))
+            point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (float(lng), float(lat)))
             new_seed = Seed(title=title, link=link,
                 point=point, lat=lat, lng=lng,
-                seeder_id=user_id, seeder_name=seeder.username,
+                seeder_id=user_id, original_seeder_id=user_id, 
+                seeder_name=seeder.username,
                 timestamp=datetime.utcnow(), isActive=True)
         else:
             abort(404, "Did not find user.")
@@ -429,15 +430,25 @@ def populate_GIS():
 def populate_seeds():
     seed1 = Seed(title="Dropbox looking to IPO in 2017.",
                  link="http://www.bloomberg.com/news/articles/2016-08-15/dropbox-said-to-discuss-possible-2017-ipo-in-talks-with-advisers",
-                 circle_id=4,
                  seeder_id=1,
-                 isActive=True)
+                 seeder_name="sidjha",
+                 point='POINT(-122.030754 37.332376)',
+                 original_seeder_id=1,
+                 lat=37.332376,
+                 lng=-122.030754,
+                 isActive=True,
+                 timestamp=datetime.utcnow())
 
     seed2 = Seed(title="Uber just losing lots of money.",
                  link="http://www.nytimes.com/2016/08/26/technology/how-uber-lost-more-than-1-billion-in-the-first-half-of-2016.html?ref=technology",
-                 circle_id=4,
                  seeder_id=1,
-                 isActive=True)
+                 seeder_name="sidjha",
+                 point='POINT(-122.416583 37.777025)',
+                 original_seeder_id=1,
+                 lat=37.777025,
+                 lng=-122.416583,
+                 isActive=True,
+                 timestamp=datetime.utcnow())
 
     db.session.add(seed1)
     db.session.commit()
