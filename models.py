@@ -5,12 +5,6 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 class Circle(db.Model):
-    # center_lat: latitude of center point
-    # center_lng: longitude of center point
-    # point: PostGIS Geography rep of center point (long lat)
-    # radius: length of radius (meters)
-    # city: city where circle is in
-    # seeds: list of seeds
     
     __tablename__ = 'circles'
     id = db.Column(db.Integer, primary_key=True)
@@ -46,11 +40,6 @@ class Circle(db.Model):
         }
 
 class Seed(db.Model):
-    # title: Descriptive title of seed
-    # link: URL of seed content
-    # circle_id: circle in which seed belongs
-    # seeder: username of seeder
-    # isActive: True if seed has not expired. False, otherwise.
 
     __tablename__ = 'seeds'
     id = db.Column(db.Integer, primary_key=True)
@@ -61,12 +50,11 @@ class Seed(db.Model):
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
     seeder_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    seeder_name = db.Column(db.String())
-    original_seeder_id = db.Column(db.Integer)
+    username = db.Column(db.String(40))
     isActive = db.Column(db.Boolean)
     timestamp = db.Column(db.DateTime)
 
-    def __init__(self, title, link, point, lat, lng, seeder_id, seeder_name, original_seeder_id, isActive, timestamp):
+    def __init__(self, title, link, point, lat, lng, seeder_id, username, isActive, timestamp):
         self.title = title
         self.link = link
         #self.circle_id = circle_id
@@ -74,10 +62,9 @@ class Seed(db.Model):
         self.lat = lat
         self.lng = lng
         self.seeder_id = seeder_id
-        self.original_seeder_id = original_seeder_id
+        self.username = username
         self.isActive = isActive
         self.timestamp = timestamp
-        self.seeder_name = seeder_name
 
     def __repr__(self):
         return '<Seed %r>' % self.id
@@ -91,31 +78,25 @@ class Seed(db.Model):
             'lat' : self.lat,
             'lng' : self.lng,
             'seeder_id' : self.seeder_id,
-            'original_seeder_id': self.original_seeder_id,
+            'username' : self.username,
             'isActive' : self.isActive,
-            'timestamp': self.timestamp,
-            'seeder_name': self.seeder_name
+            'timestamp': self.timestamp
         }
 
 class User(db.Model):
-    # first_name
-    # last_initial
-    # username
-    # notifications: boolean indicating whether notifications are ON or OFF
-    # seeds: list of Seeds (seed_ids) this user has seeded
-    
+
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(40))
-    last_initial = db.Column(db.String(40))
-    username = db.Column(db.String(40), unique=True)
+    apple_vendor_id = db.Column(db.String(60), unique=True)
+    real_name = db.Column(db.String(40))
+    username = db.Column(db.String(40))
     notifications = db.Column(db.Boolean)
     seeds = db.relationship('Seed', backref='user', lazy='dynamic')
 
-    def __init__(self, first_name, last_initial, username, notifications):
-        self.first_name = first_name
-        self.last_initial = last_initial
+    def __init__(self, real_name, username, apple_vendor_id, notifications):
+        self.real_name = real_name
         self.username = username
+        self.apple_vendor_id = apple_vendor_id
         self.notifications = notifications
 
     def __repr__(self):
@@ -125,8 +106,8 @@ class User(db.Model):
     def serialize(self):
         return {
             'id' : self.id,
-            'first_name' : self.first_name,
-            'last_initial' : self.last_initial,
+            'apple_vendor_id': self.apple_vendor_id,
+            'real_name': self.real_name,
             'username': self.username,
             'notifications': self.notifications,
             'seeds': 'seeds'

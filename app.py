@@ -23,7 +23,255 @@ NEARBY_SEEDS_THRESHOLD_DIST = 500.0 # in meters.
 def index():
     return "seed v1.0"
 
-@app.route("/circles", methods=["GET"])
+
+@app.route("/seeds", methods=["GET"])
+def api_get_seeds():
+    """
+    Returns a list of seeds near the latitude and longitude.
+    """
+    if "lat" in request.args and "lng" in request.args:
+        # Parse arguments, extract latitude and longitude
+        try:
+            lat = float(request.args.get("lat", ""))
+            lng = float(request.args.get("lng", ""))
+
+            if (lat and lng) and (-90 <= lat <= 90) and (-180 <= lng <= 180):
+                pass
+            else:
+                raise ValueError("Invalid arguments")
+        except:
+            abort(400, "Invalid arguments")
+
+        # convert current coordinates to a Geography object
+        point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat))
+
+        # call PostGIS function ST_DWithin to find nearby seeds
+        nearby = db.session.query(Seed) \
+                    .filter(func.ST_DWithin(point, Seed.point, NEARBY_SEEDS_THRESHOLD_DIST)) \
+                    .order_by(func.ST_Distance(point, Seed.point))
+
+        num_seeds_found = nearby.count()
+
+        return jsonify({"seeds": [i.serialize for i in nearby.all()]}), 200
+
+    else:
+        abort(400, "Invalid or missing arguments")
+
+
+@app.route("/seed/create", methods=["POST"])
+def api_create_seed():
+    """
+    Create a new seed with the specified title and link and specified location.
+    If user with vendor_id exists, then associate the seed with that user.
+    If user with vendor_id does not exist, then create new user first, then
+    create seed and associate the seed with the new user.
+    """
+    if request.method == "POST":
+        for item in ["title", "link", "lat", "lng", "vendor_id_str", "username"]:
+            if not item in request.form:
+                abort(400, "Missing arguments.")
+
+        # TODO: validate title and link
+        title = request.form["title"].strip()
+        link = request.form["link"].strip()
+        lat = request.form["lat"].strip()
+        lng = request.form["lng"].strip()
+        username = request.form["username"].strip()
+        vendor_id = request.form["vendor_id_str"].strip()
+
+        seeder = User.query.filter_by(apple_vendor_id=vendor_id).first()
+        point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (float(lng), float(lat)))
+
+        new_seed = None
+        if seeder:
+            # Save new seed and connect it to existing user
+            new_seed = Seed(title=title, link=link,
+                point=point, lat=lat, lng=lng,
+                seeder_id=seeder.id, username=username, 
+                timestamp=datetime.utcnow(), isActive=True)
+        else:
+            # Create new user
+            new_user = User(real_name="",
+                        apple_vendor_id=vendor_id,
+                        username=username,
+                        notifications=False)
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+            except Exception as e:
+                abort(500, "Something went wrong in setting up new user.")
+
+            # Save new seed and connect it to newly created user
+            new_seed = Seed(title=title, link=link,
+                point=point, lat=lat, lng=lng,
+                seeder_id=new_user.id, username=username, 
+                timestamp=datetime.utcnow(), isActive=True)
+        try:
+            db.session.add(new_seed)
+            db.session.commit()
+            return jsonify({"seed": new_seed.serialize}), 200
+        except:
+            abort(500, "Something went wrong. Could not create seed.")
+    else:
+        abort(400, "This type of request is not supported.")
+
+
+@app.route("/seed", methods=["GET"])
+def api_get_seed():
+    """
+    Returns a Seed with the specified seed_id.
+    """
+    try:
+        seed_id = int(request.args.get("seed_id"))
+    except:
+        abort(400, "Invalid arguments")
+
+    if seed_id:
+        seed = Seed.query.filter_by(id=seed_id).first()
+
+        if seed:
+            return jsonify({"seed": seed.serialize}), 200
+        else:
+            abort(404, "Seed does not exist.")
+    else:
+        abort(400, "Invalid or missing arguments.")
+
+
+@app.route("/seed/delete", methods=["POST"])
+def api_delete_seed():
+    """
+    Delete the specified seed.
+    """
+    if request.method == "POST":
+        try:
+            seed_id = int(request.form.get("seed_id"))
+            vendor_id = request.form.get("vendor_id_str").strip()
+        except:
+            abort(400, "Invalid arguments")
+
+        seed = Seed.query.filter_by(id=seed_id).first()
+        user = User.query.filter_by(apple_vendor_id=vendor_id)
+
+        # TODO: check if this user is allowed to delete the seed
+        if seed and seed.seeder_id == user.id:
+            try:
+                db.session.delete(seed)
+                db.session.commit()
+                return jsonify({"seed": ""}), 200
+            except:
+                abort(500, "Something went wrong. Could not delete seed.")
+        else:
+            abort(400, "Not allowed to delete seed.")
+    else:
+        abort(400, "This type of request is not supported.")
+
+
+@app.route("/user", methods=["GET"])
+def api_get_user():
+    """
+    Returns the user with the specified username or user_id.
+    """
+    vendor_id = request.args.get("vendor_id_str")
+
+    if vendor_id:
+        vendor_id = vendor_id.strip()
+        user = User.query.filter_by(apple_vendor_id=vendor_id).first()
+
+        if user:
+            return jsonify({"user": user.serialize}), 200
+        else:
+            abort(404, "User does not exist.")
+
+    abort(400, "Invalid or missing arguments.")
+
+
+@app.route("/user/update", methods=["POST"])
+def api_update_user():
+    """
+    Change settings for a user.
+    """
+    if request.method == "POST":
+        vendor_id = request.form.get("vendor_id_str", None)
+
+        if not vendor_id:
+            abort(400, "User credentials missing.")
+
+        vendor_id = vendor_id.strip()
+
+        real_name = request.form.get("real_name", "")
+        username = request.form.get("username", "")
+        notifications = request.form.get("notifications", "")
+
+        if not validate_realname(real_name):
+            abort(400, "Invalid arguments - real name can only be max 40 letters.")
+
+        if not validate_username(username):
+            abort(400, "Invalid username.")
+
+        user = User.query.filter_by(apple_vendor_id=vendor_id).first()
+
+        if user:
+            field_updated = False
+
+            if notifications and notifications != user.notifications:
+                user.notifications = notifications
+                field_updated = True
+
+            if real_name and real_name != user.real_name:
+                user.real_name = real_name
+                field_updated = True
+
+            if username and username != user.username:
+                user.username = username
+                field_updated = True
+
+            if field_updated:
+                try:
+                    db.session.commit()
+                    return jsonify({"user": user.serialize}), 200
+                except:
+                    abort(500, "Something went wrong.")
+            else:
+                return jsonify({"user": user.serialize}), 200
+        else:
+            abort(404, "User not found.")
+    else:
+        abort(400, "This type of request is not supported.")
+
+
+@app.route("/user/delete", methods=["POST"])
+def api_delete_user():
+    """
+    Delete the specified user and all their seeds.
+    """
+    if request.method == "POST":
+        vendor_id = request.form.get("vendor_id_str", None)
+
+        if vendor_id:
+            vendor_id = vendor_id.strip()
+            user = User.query.filter_by(apple_vendor_id=vendor_id).first()
+            if user:
+                try:
+                    Seed.query.filter_by(seeder_id=user.id).delete()
+                    db.session.delete(user)
+                    db.session.commit()
+                    return jsonify({"user": ""}), 200
+                except:
+                    abort(500, "Something went wrong. Could not delete user.")
+            else:
+                abort(400, "No such user found.")
+        else:
+            abort(400, "Missing arguments.")
+    else:
+        abort(400, "This type of request is not supported.")
+
+
+""" 
+********************************
+Deprecated API methods (For now)
+********************************
+"""
+# @app.route("/circles", methods=["GET"])
 def api_get_circle():
     """
     Returns a matching circle if the specified latitude and longitude fall within a defined circle. 
@@ -72,135 +320,7 @@ def api_get_circle():
     else:
         abort(400, "Missing arguments")
 
-
-@app.route("/seeds", methods=["GET"])
-def api_get_seeds():
-    """
-    Returns a list of seeds near the latitude and longitude.
-    """
-
-    if "lat" in request.args and "lng" in request.args:
-        # Parse arguments, extract latitude and longitude
-        try:
-            lat = float(request.args.get("lat", ""))
-            lng = float(request.args.get("lng", ""))
-
-            if (lat and lng) and (-90 <= lat <= 90) and (-180 <= lng <= 180):
-                pass
-            else:
-                raise ValueError("Invalid arguments")
-        except:
-            abort(400, "Invalid arguments")
-
-        # convert current coordinates to a Geography object
-        point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (lng, lat))
-
-        # call PostGIS function ST_DWithin to find nearby seeds
-        nearby = db.session.query(Seed) \
-                    .filter(func.ST_DWithin(point, Seed.point, NEARBY_SEEDS_THRESHOLD_DIST)) \
-                    .order_by(func.ST_Distance(point, Seed.point))
-
-        num_seeds_found = nearby.count()
-
-        return jsonify({"seeds": [i.serialize for i in nearby.all()]}), 200
-
-    else:
-        abort(400, "Invalid or missing arguments")
-
-
-@app.route("/seed/create", methods=["POST"])
-def api_create_seed():
-    """
-    Create a new seed with the specified title and link and specified location.
-    """
-    if request.method == "POST":
-        for item in ["title", "link", "lat", "lng", "user_id"]:
-            if not item in request.form:
-                abort(400, "Missing arguments.")
-
-        try:
-            user_id = int(request.form["user_id"].strip())
-        except:
-            abort(400, "Invalid arguments.")
-
-        title = request.form["title"].strip()
-        link = request.form["link"].strip()
-        lat = request.form["lat"].strip()
-        lng = request.form["lng"].strip()
-        # TODO: validate title and link
-
-        seeder = User.query.filter_by(id=user_id).first()
-
-        if seeder:
-            point = func.ST_GeogFromText('SRID=4326;POINT(%f %f)' % (float(lng), float(lat)))
-            new_seed = Seed(title=title, link=link,
-                point=point, lat=lat, lng=lng,
-                seeder_id=user_id, original_seeder_id=user_id, 
-                seeder_name=seeder.username,
-                timestamp=datetime.utcnow(), isActive=True)
-        else:
-            abort(404, "Did not find user.")
-
-        try:
-            db.session.add(new_seed)
-            db.session.commit()
-            return jsonify({"seed": new_seed.serialize}), 200
-        except:
-            abort(500, "Something went wrong. Could not create seed.")
-    else:
-        abort(400, "This type of request is not supported.")
-
-
-@app.route("/seed", methods=["GET"])
-def api_get_seed():
-    """
-    Returns a Seed with the specified seed_id.
-    """
-    try:
-        seed_id = int(request.args.get("seed_id"))
-    except:
-        abort(400, "Invalid arguments")
-
-    if seed_id:
-        seed = Seed.query.filter_by(id=seed_id).first()
-
-        if seed:
-            return jsonify({"seed": seed.serialize}), 200
-        else:
-            abort(404, "Seed does not exist.")
-    else:
-        abort(400, "Invalid or missing arguments.")
-
-
-@app.route("/seed/delete", methods=["POST"])
-def api_delete_seed():
-    """
-    Delete the specified seed.
-    """
-    if request.method == "POST":
-        try:
-            seed_id = int(request.form.get("seed_id"))
-            user_id = int(request.form.get("user_id"))
-        except:
-            abort(400, "Invalid arguments")
-
-        seed = Seed.query.filter_by(id=seed_id).first()
-
-        # TODO: check if this user is allowed to delete the seed
-        if seed and seed.seeder_id == user_id:
-            try:
-                db.session.delete(seed)
-                db.session.commit()
-                return jsonify({"seed": ""}), 200
-            except:
-                abort(500, "Something went wrong. Could not delete seed.")
-        else:
-            abort(400, "Invalid arguments.")
-    else:
-        abort(400, "This type of request is not supported.")
-
-
-@app.route("/reseed", methods=["POST"])
+#@app.route("/reseed", methods=["POST"])
 def api_reseed():
     """
     Reseed an existing seed in a new specified circle from the specified seedbag of user. 
@@ -240,8 +360,7 @@ def api_reseed():
     else:
         abort(400, "This type of request is not supported.")
 
-
-@app.route("/user/create", methods=["POST"])
+#@app.route("/user/create", methods=["POST"])
 def api_create_user():
     """
     Create a new account with the specified first name, last initial and username. 
@@ -254,8 +373,9 @@ def api_create_user():
         first_name = request.form["first_name"].strip()
         last_initial = request.form["last_initial"].strip()
         username = request.form["username"].strip()
+        vendor_id = request.form["vendorIDStr"].strip()
 
-        if first_name and last_initial and username:
+        if first_name and last_initial and username and vendor_id:
 
             if not validate_first_name(first_name) or not validate_last_initial(last_initial):
                 abort(400, "Invalid arguments - name can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
@@ -263,10 +383,14 @@ def api_create_user():
             if not validate_username(username):
                 abort(400, "Invalid username.")
 
+            if not validate_vendorID(vendor_id):
+                abort(400, "Invalid vendor ID.")
+
             try:
                 new_user = User(first_name=first_name,
                             last_initial=last_initial,
                             username=username,
+                            apple_vendor_id=vendor_id,
                             notifications=False)
             except:
                 abort(400, "Invalid arguments.")
@@ -285,182 +409,23 @@ def api_create_user():
         abort(400, "This type of request is not supported.")
 
 
-@app.route("/user", methods=["GET"])
-def api_get_user():
-    """
-    Returns the user with the specified username or user_id.
-    """
-    username = request.args.get("username")
-    user_id = request.args.get("user_id")
-
-    if username:
-        user = User.query.filter_by(username=username).first()
-
-        if user:
-            return jsonify({"user": user.serialize}), 200
-        else:
-            abort(404, "User does not exist.")
-    if user_id:
-        user = User.query.filter_by(id=user_id).first()
-
-        if user:
-            return jsonify({"user": user.serialize}), 200
-        else:
-            abort(404, "User does not exist.")
-
-    abort(400, "Invalid or missing arguments")
-
-
-@app.route("/user/update", methods=["POST"])
-def api_update_user():
-    """
-    Toggle notifications off or on for the specified user.
-    """
-    if request.method == "POST":
-        user_id = request.form.get("user_id", None)
-
-        if not user_id:
-            abort(400, "User ID missing.")
-
-        notifications = request.form.get("notifications", "")
-        first_name = request.form.get("first_name", "")
-        last_initial = request.form.get("last_initial", "")
-        username = request.form.get("username", "")
-
-        if not validate_first_name(first_name) or not validate_last_initial(last_initial):
-            abort(400, "Invalid arguments - name and username can only be max 40 letters each. Last initial can be max 5 letters with no spaces or numbers.")
-
-        if not validate_username(username):
-            abort(400, "That username is taken.")
-
-        user = User.query.filter_by(id=user_id).first()
-
-        if user:
-            field_updated = False
-
-            if notifications and notifications != user.notifications:
-                user.notifications = notifications
-                field_updated = True
-
-            if first_name and first_name != user.first_name:
-                user.first_name = first_name
-                field_updated = True
-
-            if last_initial and last_initial != user.last_initial:
-                user.last_initial = last_initial
-                field_updated = True
-
-            if username and username != user.username:
-                existing_user = User.query.filter_by(username=username).first()
-
-                if not existing_user:
-                    user.username = username
-                    field_updated = True
-                else:
-                    abort(400, "Username already exists.")
-
-            if field_updated:
-                try:
-                    db.session.commit()
-                    return jsonify({"user": user.serialize}), 200
-                except:
-                    abort(500, "Something went wrong.")
-            else:
-                return jsonify({"user": user.serialize}), 200
-        else:
-            abort(404, "User not found.")
-    else:
-        abort(400, "This type of request is not supported.")
-
-
-@app.route("/user/delete", methods=["POST"])
-def api_delete_user():
-    """
-    Delete the specified user and all their seeds.
-    """
-    if request.method == "POST":
-        user_id = request.form.get("user_id", None)
-
-        try:
-            user_id = int(user_id)
-        except:
-            abort(400, "Invalid arguments.")
-
-        if user_id:
-            user = User.query.filter_by(id=user_id).first()
-            if user:
-                try:
-                    Seed.query.filter_by(seeder_id=user.id).delete()
-                    db.session.delete(user)
-                    db.session.commit()
-                    return jsonify({"user": ""}), 200
-                except:
-                    abort(500, "Something went wrong. Could not delete user.")
-            else:
-                abort(400, "No such user found.")
-        else:
-            abort(400, "Missing arguments.")
-    else:
-        abort(400, "This type of request is not supported.")
-
-
-# pragma mark - helper functions
-def validate_first_name(first_name):
-    return 0 < len(first_name) <= 40
-
-def validate_last_initial(last_initial):
-    if 0 < len(last_initial) <= 5:
-        if last_initial.isalpha():
-            return True
-    return False
+"""
+****************
+Helper Functions
+****************
+"""
+def validate_realname(name):
+    return 0 < len(name) <= 40
 
 def validate_username(username):
     if 0 < len(username) <= 40:
-        existing_user = User.query.filter_by(username=username).first()
-        if not existing_user:
-            return True
+        return True
+
+def validate_vendorID(vendor_id):
+    existing_user = User.query.filter_by(apple_vendor_id=vendor_id).first()
+    if not existing_user:
+        return True
     return False
-
-def populate_GIS():
-    circle1 = Circle(center_lat=37.332376, center_lng=-122.030754, point='POINT(-122.030754 37.332376)', radius='150', name='infinite loop', city='Cupertino')
-    circle2 = Circle(center_lat=37.414172, center_lng=-122.038672, point='POINT(-122.038672 37.414172)', radius='200', name='airbase', city='Cupertino')
-    circle4 = Circle(center_lat=37.777025, center_lng=-122.416583, point='POINT(-122.416583 37.777025)', radius='200', name='twitter hq', city='San Francisco')
-    circle3 = Circle(center_lat=40.748636, center_lng=-73.985654, point='POINT(-73.985654 40.748636)', radius='100', name='empire state', city='Empire State Bldg')
-
-def populate_seeds():
-    seed1 = Seed(title="Dropbox looking to IPO in 2017.",
-                 link="http://www.bloomberg.com/news/articles/2016-08-15/dropbox-said-to-discuss-possible-2017-ipo-in-talks-with-advisers",
-                 seeder_id=1,
-                 seeder_name="sidjha",
-                 point='POINT(-122.030754 37.332376)',
-                 original_seeder_id=1,
-                 lat=37.332376,
-                 lng=-122.030754,
-                 isActive=True,
-                 timestamp=datetime.utcnow())
-
-    seed2 = Seed(title="Uber just losing lots of money.",
-                 link="http://www.nytimes.com/2016/08/26/technology/how-uber-lost-more-than-1-billion-in-the-first-half-of-2016.html?ref=technology",
-                 seeder_id=1,
-                 seeder_name="sidjha",
-                 point='POINT(-122.416583 37.777025)',
-                 original_seeder_id=1,
-                 lat=37.777025,
-                 lng=-122.416583,
-                 isActive=True,
-                 timestamp=datetime.utcnow())
-
-    db.session.add(seed1)
-    db.session.commit()
-
-def populate_users():
-    user1 = User(first_name="Siddharth",
-                 last_initial="J",
-                 username="sidjha",
-                 notifications=True)
-
-    db.session.add(user1)
-    db.session.commit()
 
 def alternative_circle_search():
     # This one does it with max 2 queries instead of comparing geodesics of nearby set
