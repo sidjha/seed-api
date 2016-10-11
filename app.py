@@ -202,10 +202,10 @@ def api_update_user():
         username = request.form.get("username", "")
         notifications = request.form.get("notifications", "")
 
-        if not validate_realname(real_name):
+        if real_name and not validate_realname(real_name):
             abort(400, "Invalid arguments - real name can only be max 40 letters.")
 
-        if not validate_username(username):
+        if username and not validate_username(username):
             abort(400, "Invalid username.")
 
         user = User.query.filter_by(apple_vendor_id=vendor_id).first()
