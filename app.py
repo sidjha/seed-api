@@ -6,7 +6,7 @@ from models import Circle, Seed, User, db
 from datetime import datetime
 
 app = Flask(__name__)
-APP_SETTINGS="config.DevConfig"
+APP_SETTINGS=os.environ.get('APP_SETTINGS')
 app.config.from_object(APP_SETTINGS)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
