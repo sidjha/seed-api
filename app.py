@@ -19,6 +19,16 @@ NEARBY_SEEDS_THRESHOLD_DIST = 500.0 # in meters.
 
 # pragma mark - API methods
 
+
+@app.errorhandler(400)
+def custom400(error):
+    return jsonify({"error": error.description}), 400
+
+@app.errorhandler(500)
+def custom500(error):
+    return jsonify({"error": error.description}), 500
+
+
 @app.route("/")
 def index():
     return "seed v1.0"
