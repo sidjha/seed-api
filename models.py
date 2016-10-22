@@ -53,6 +53,7 @@ class Seed(db.Model):
     username = db.Column(db.String(40))
     isActive = db.Column(db.Boolean)
     timestamp = db.Column(db.DateTime)
+    report_count = db.Column(db.Integer)
 
     def __init__(self, title, link, point, lat, lng, seeder_id, username, isActive, timestamp):
         self.title = title
@@ -65,6 +66,7 @@ class Seed(db.Model):
         self.username = username
         self.isActive = isActive
         self.timestamp = timestamp
+        self.report_count = 0
 
     def __repr__(self):
         return '<Seed %r>' % self.id
@@ -112,6 +114,32 @@ class User(db.Model):
             'notifications': self.notifications,
             'seeds': 'seeds'
         }
+
+
+class ReportedSeed(db.Model):
+    __tablename__ = 'reportedseeds'
+    id = db.Column(db.Integer, primary_key=True)
+    reporter = db.Column(db.Integer, db.ForeignKey('users.id'))
+    seed = db.Column(db.Integer, db.ForeignKey('seeds.id'))
+    reason = db.Column(db.String())
+
+    def __init__(self, reporter, seed, reason):
+        self.reporter = reporter
+        self.seed = seed
+        self.reason = reason
+
+    def __repr__(self):
+        return '<ReportedSeed %r>' % self.id
+
+    @property
+    def serialize(self):
+        return {
+            'id': self.id,
+            'reporter': self.reporter,
+            'seed': self.seed,
+            'reason': self.reason
+        }
+
 
 class Seedbag():
     pass

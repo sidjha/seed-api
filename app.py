@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, g, jsonify, abort
 import os, math
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
-from models import Circle, Seed, User, db
+from models import Circle, Seed, User, ReportedSeed, db
 from datetime import datetime
 
 app = Flask(__name__)
@@ -162,6 +162,39 @@ def api_delete_seed():
                 abort(500, "Something went wrong. Could not delete seed.")
         else:
             abort(400, "Not allowed to delete seed.")
+    else:
+        abort(400, "This type of request is not supported.")
+
+
+@app.route("/seed/report", methods=["POST"])
+def api_report_seed():
+    """
+    Report the Seed as spam/abuse/etc.
+    """
+
+    if request.method == "POST":
+        try:
+            seed_id = int(request.form.get("seed_id"))
+            vendor_id = request.form.get("vendor_id_str").strip()
+            reason = request.form.get("reason").strip()
+        except:
+            abort(400, "Invalid arguments")
+
+        seed = Seed.query.filter_by(id=seed_id).first()
+        user = User.query.filter_by(apple_vendor_id=vendor_id)
+
+        if seed and user:
+            try:
+                seed.report_count = seed.report_count + 1
+                reported = ReportedSeed(reporter=user.id, seed=seed.id, reason=reason)
+                db.session.add(reported)
+                db.session.commit()
+                return jsonify({"reported_seed": reported.serialize}), 200
+            except:
+                abort(500, "Something went wrong. Could not report seed.")
+
+        else:
+            abort(400, "Not allowed to report seed.")
     else:
         abort(400, "This type of request is not supported.")
 
