@@ -160,7 +160,7 @@ def api_delete_seed():
             abort(400, "Invalid arguments")
 
         seed = Seed.query.filter_by(id=seed_id).first()
-        user = User.query.filter_by(apple_vendor_id=vendor_id)
+        user = User.query.filter_by(apple_vendor_id=vendor_id).first()
 
         # TODO: check if this user is allowed to delete the seed
         if seed and seed.seeder_id == user.id:
@@ -168,7 +168,7 @@ def api_delete_seed():
                 db.session.delete(seed)
                 db.session.commit()
                 return jsonify({"seed": ""}), 200
-            except:
+            except Exception as e:
                 abort(500, "Something went wrong. Could not delete seed.")
         else:
             abort(400, "Not allowed to delete seed.")
@@ -191,7 +191,7 @@ def api_report_seed():
             abort(400, "Invalid arguments")
 
         seed = Seed.query.filter_by(id=seed_id).first()
-        user = User.query.filter_by(apple_vendor_id=vendor_id)
+        user = User.query.filter_by(apple_vendor_id=vendor_id).first()
 
         if seed and user:
             try:
@@ -200,8 +200,8 @@ def api_report_seed():
                 db.session.add(reported)
                 db.session.commit()
                 return jsonify({"reported_seed": reported.serialize}), 200
-            except:
-                abort(500, "Something went wrong. Could not report seed.")
+            except Exception as e:
+                abort(500, "Something went wrong. Could not report seed. Full description: %s" % str(e))
 
         else:
             abort(400, "Not allowed to report seed.")
