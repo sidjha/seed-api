@@ -54,6 +54,7 @@ class Seed(db.Model):
     isActive = db.Column(db.Boolean)
     timestamp = db.Column(db.DateTime)
     report_count = db.Column(db.Integer)
+    upvotes = db.Column(db.Integer)
 
     def __init__(self, title, link, point, lat, lng, seeder_id, username, isActive, timestamp):
         self.title = title
@@ -67,6 +68,7 @@ class Seed(db.Model):
         self.isActive = isActive
         self.timestamp = timestamp
         self.report_count = 0
+        self.upvotes = 0
 
     def __repr__(self):
         return '<Seed %r>' % self.id
@@ -82,7 +84,8 @@ class Seed(db.Model):
             'seeder_id' : self.seeder_id,
             'username' : self.username,
             'isActive' : self.isActive,
-            'timestamp': self.timestamp
+            'timestamp': self.timestamp,
+            'upvotes': str(self.upvotes)
         }
 
 class User(db.Model):

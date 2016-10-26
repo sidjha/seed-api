@@ -208,6 +208,33 @@ def api_report_seed():
     else:
         abort(400, "This type of request is not supported.")
 
+@app.route("/seed/upvote", methods=["POST"])
+def api_upvote_seed():
+    """
+    Upvote the seed.
+    """
+
+    if request.method == "POST":
+        try:
+            seed_id = int(request.form.get("seed_id"))
+            vendor_id = request.form.get("vendor_id_str").strip()
+        except:
+            abort(400, "Invalid arguments")
+
+        seed = Seed.query.filter_by(id=seed_id).first()
+        user = User.query.filter_by(apple_vendor_id=vendor_id).first()
+
+        if seed and user:
+            try:
+                seed.upvotes = seed.upvotes + 1
+                db.session.commit()
+                return jsonify({"seed": seed.serialize}), 200
+            except Exception as e:
+                abort(500, "Something went wrong. Could not add upvote.")
+        else:
+            abort(400, "Not allowed to upvote seed.")
+    else:
+        abort(400, "This type of request is not supported.")
 
 @app.route("/user", methods=["GET"])
 def api_get_user():
