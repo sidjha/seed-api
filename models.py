@@ -1,5 +1,7 @@
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects import postgresql
 from geoalchemy2 import Geography
+from sqlalchemy import Integer
 
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
@@ -97,6 +99,7 @@ class User(db.Model):
     username = db.Column(db.String(40))
     notifications = db.Column(db.Boolean)
     seeds = db.relationship('Seed', backref='user', lazy='dynamic')
+    upvoted_seeds = db.Column(postgresql.ARRAY(Integer))
 
     def __init__(self, real_name, username, apple_vendor_id, notifications):
         self.real_name = real_name

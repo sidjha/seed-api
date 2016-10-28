@@ -218,19 +218,29 @@ def api_upvote_seed():
         try:
             seed_id = int(request.form.get("seed_id"))
             vendor_id = request.form.get("vendor_id_str").strip()
+            upvote_val = request.form.get("upvote_sign")
         except:
             abort(400, "Invalid arguments")
 
         seed = Seed.query.filter_by(id=seed_id).first()
         user = User.query.filter_by(apple_vendor_id=vendor_id).first()
 
-        if seed and user:
-            try:
-                seed.upvotes = seed.upvotes + 1
-                db.session.commit()
-                return jsonify({"seed": seed.serialize}), 200
-            except Exception as e:
-                abort(500, "Something went wrong. Could not add upvote.")
+        if seed:
+            if seed.upvotes:
+                upvotes = int(seed.upvotes)
+            else:
+                upvotes = 0
+
+            # increment/decrement upvotes based on form input
+            if upvote_val == "up":
+                upvotes = upvotes + 1
+            else:
+                upvotes = upvotes - 1
+
+            seed.upvotes = str(upvotes)
+            db.session.commit()
+            return jsonify({"seed": seed.serialize}), 200
+
         else:
             abort(400, "Not allowed to upvote seed.")
     else:
